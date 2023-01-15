@@ -11,8 +11,9 @@ import (
 // RelayAddressGeneratorPortRange can be used to only allocate connections inside a defined port range.
 // Similar to the RelayAddressGeneratorStatic a static ip address can be set.
 type RelayAddressGeneratorPortRange struct {
-	// RelayAddress is the IP returned to the user when the relay is created
-	RelayAddress net.IP
+	// PublicRelayAddress is the IP returned to the user when the relay is created
+	PublicRelayAddress  net.IP
+	PrivateRelayAddress net.IP
 
 	// MinPort the minimum port to allocate
 	MinPort uint16
@@ -50,7 +51,7 @@ func (r *RelayAddressGeneratorPortRange) Validate() error {
 		return errMinPortNotZero
 	case r.MaxPort == 0:
 		return errMaxPortNotZero
-	case r.RelayAddress == nil:
+	case r.PublicRelayAddress == nil:
 		return errRelayAddressInvalid
 	case r.Address == "":
 		return errListeningAddressInvalid
@@ -60,8 +61,10 @@ func (r *RelayAddressGeneratorPortRange) Validate() error {
 }
 
 // AllocatePacketConn generates a new PacketConn to receive traffic on and the IP/Port to populate the allocation response with
-func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requestedPort int) (net.PacketConn, net.Addr, error) {
+func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requestedPort int, srcAddr net.Addr, relayAddressType int) (net.PacketConn, net.Addr, error) {
+	fmt.Println("key2", srcAddr)
 	if requestedPort != 0 {
+		fmt.Println("hello1 - %s, %s", network, requestedPort)
 		conn, err := r.Net.ListenPacket(network, fmt.Sprintf("%s:%d", r.Address, requestedPort))
 		if err != nil {
 			return nil, nil, err
@@ -71,7 +74,12 @@ func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requ
 			return nil, nil, errNilConn
 		}
 
-		relayAddr.IP = r.RelayAddress
+		if relayAddressType == 0 {
+			relayAddr.IP = r.PublicRelayAddress
+		} else {
+			relayAddr.IP = r.PrivateRelayAddress
+		}
+
 		return conn, relayAddr, nil
 	}
 
@@ -81,13 +89,17 @@ func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requ
 		if err != nil {
 			continue
 		}
-
+		fmt.Println("hello2 - %s, %s", network, port)
 		relayAddr, ok := conn.LocalAddr().(*net.UDPAddr)
 		if !ok {
 			return nil, nil, errNilConn
 		}
 
-		relayAddr.IP = r.RelayAddress
+		if relayAddressType == 0 {
+			relayAddr.IP = r.PublicRelayAddress
+		} else {
+			relayAddr.IP = r.PrivateRelayAddress
+		}
 		return conn, relayAddr, nil
 	}
 

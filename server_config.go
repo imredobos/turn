@@ -10,16 +10,16 @@ import (
 	"github.com/pion/logging"
 )
 
-// RelayAddressGenerator is used to generate a RelayAddress when creating an allocation.
+// RelayAddressGenerator is used to generate a PublicRelayAddress when creating an allocation.
 // You can use one of the provided ones or provide your own.
 type RelayAddressGenerator interface {
 	// Validate confirms that the RelayAddressGenerator is properly initialized
 	Validate() error
 
-	// Allocate a PacketConn (UDP) RelayAddress
-	AllocatePacketConn(network string, requestedPort int) (net.PacketConn, net.Addr, error)
+	// Allocate a PacketConn (UDP) PublicRelayAddress
+	AllocatePacketConn(network string, requestedPort int, srcAddr net.Addr, relayAddressType int) (net.PacketConn, net.Addr, error)
 
-	// Allocate a Conn (TCP) RelayAddress
+	// Allocate a Conn (TCP) PublicRelayAddress
 	AllocateConn(network string, requestedPort int) (net.Conn, net.Addr, error)
 }
 
@@ -65,7 +65,7 @@ func (c *ListenerConfig) validate() error {
 }
 
 // AuthHandler is a callback used to handle incoming auth requests, allowing users to customize Pion TURN with custom behavior
-type AuthHandler func(username, realm string, srcAddr net.Addr) (key []byte, ok bool)
+type AuthHandler func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType int, ok bool)
 
 // GenerateAuthKey is a convenience function to easily generate keys in the format used by AuthHandler
 func GenerateAuthKey(username, realm, password string) []byte {

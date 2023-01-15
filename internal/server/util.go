@@ -61,19 +61,19 @@ func buildMsg(transactionID [stun.TransactionIDSize]byte, msgType stun.MessageTy
 	return append([]stun.Setter{&stun.Message{TransactionID: transactionID}, msgType}, additional...)
 }
 
-func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) (stun.MessageIntegrity, bool, error) {
-	respondWithNonce := func(responseCode stun.ErrorCode) (stun.MessageIntegrity, bool, error) {
+func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) (stun.MessageIntegrity, int, bool, error) {
+	respondWithNonce := func(responseCode stun.ErrorCode) (stun.MessageIntegrity, int, bool, error) {
 		nonce, err := buildNonce()
 		if err != nil {
-			return nil, false, err
+			return nil, -1, false, err
 		}
 
 		// Nonce has already been taken
 		if _, keyCollision := r.Nonces.LoadOrStore(nonce, time.Now()); keyCollision {
-			return nil, false, errDuplicatedNonce
+			return nil, -1, false, errDuplicatedNonce
 		}
 
-		return nil, false, buildAndSend(r.Conn, r.SrcAddr, buildMsg(m.TransactionID,
+		return nil, -1, false, buildAndSend(r.Conn, r.SrcAddr, buildMsg(m.TransactionID,
 			stun.NewType(callingMethod, stun.ClassErrorResponse),
 			&stun.ErrorCodeAttribute{Code: responseCode},
 			stun.NewNonce(nonce),
@@ -91,7 +91,7 @@ func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) 
 	badRequestMsg := buildMsg(m.TransactionID, stun.NewType(callingMethod, stun.ClassErrorResponse), &stun.ErrorCodeAttribute{Code: stun.CodeBadRequest})
 
 	if err := nonceAttr.GetFrom(m); err != nil {
-		return nil, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
+		return nil, -1, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
 	}
 
 	// Assert Nonce exists and is not expired
@@ -107,21 +107,21 @@ func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) 
 	}
 
 	if err := realmAttr.GetFrom(m); err != nil {
-		return nil, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
+		return nil, -1, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
 	} else if err := usernameAttr.GetFrom(m); err != nil {
-		return nil, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
+		return nil, -1, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
 	}
 
-	ourKey, ok := r.AuthHandler(usernameAttr.String(), realmAttr.String(), r.SrcAddr)
+	ourKey, relayAddressType, ok := r.AuthHandler(usernameAttr.String(), realmAttr.String(), r.SrcAddr)
 	if !ok {
-		return nil, false, buildAndSendErr(r.Conn, r.SrcAddr, fmt.Errorf("%w %s", errNoSuchUser, usernameAttr.String()), badRequestMsg...)
+		return nil, -1, false, buildAndSendErr(r.Conn, r.SrcAddr, fmt.Errorf("%w %s", errNoSuchUser, usernameAttr.String()), badRequestMsg...)
 	}
 
 	if err := stun.MessageIntegrity(ourKey).Check(m); err != nil {
-		return nil, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
+		return nil, -1, false, buildAndSendErr(r.Conn, r.SrcAddr, err, badRequestMsg...)
 	}
 
-	return stun.MessageIntegrity(ourKey), true, nil
+	return stun.MessageIntegrity(ourKey), relayAddressType, true, nil
 }
 
 func allocationLifeTime(m *stun.Message) time.Duration {

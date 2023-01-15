@@ -35,22 +35,22 @@ func NewLongTermAuthHandler(sharedSecret string, l logging.LeveledLogger) AuthHa
 	if l == nil {
 		l = logging.NewDefaultLoggerFactory().NewLogger("turn")
 	}
-	return func(username, realm string, srcAddr net.Addr) (key []byte, ok bool) {
+	return func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType int, ok bool) {
 		l.Tracef("Authentication username=%q realm=%q srcAddr=%v", username, realm, srcAddr)
 		t, err := strconv.Atoi(username)
 		if err != nil {
 			l.Errorf("Invalid time-windowed username %q", username)
-			return nil, false
+			return nil, 0, false
 		}
 		if int64(t) < time.Now().Unix() {
 			l.Errorf("Expired time-windowed username %q", username)
-			return nil, false
+			return nil, 0, false
 		}
 		password, err := longTermCredentials(username, sharedSecret)
 		if err != nil {
 			l.Error(err.Error())
-			return nil, false
+			return nil, 0, false
 		}
-		return GenerateAuthKey(username, realm, password), true
+		return GenerateAuthKey(username, realm, password), 0, true
 	}
 }

@@ -13,6 +13,11 @@ import (
 	"github.com/pion/turn/v2/internal/proto"
 )
 
+const ( // iota is reset to 0
+	PUBLIC  = 0 // c0 == 0
+	PRIVATE = 1
+)
+
 // Request contains all the state needed to process a single incoming datagram
 type Request struct {
 	// Current Request State
@@ -25,7 +30,7 @@ type Request struct {
 	Nonces            *sync.Map
 
 	// User Configuration
-	AuthHandler        func(username string, realm string, srcAddr net.Addr) (key []byte, ok bool)
+	AuthHandler        func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType int, ok bool)
 	Log                logging.LeveledLogger
 	Realm              string
 	ChannelBindTimeout time.Duration
