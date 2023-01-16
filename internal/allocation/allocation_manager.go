@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"fmt"
+	"github.com/pion/turn/v2/internal/util"
 	"net"
 	"sync"
 	"time"
@@ -12,7 +13,7 @@ import (
 // ManagerConfig a bag of config params for Manager.
 type ManagerConfig struct {
 	LeveledLogger      logging.LeveledLogger
-	AllocatePacketConn func(network string, requestedPort int, srcAddr net.Addr, relayAddressType int) (net.PacketConn, net.Addr, error)
+	AllocatePacketConn func(network string, requestedPort int, srcAddr net.Addr, relayAddressType util.RelayAddressType) (net.PacketConn, net.Addr, error)
 	AllocateConn       func(network string, requestedPort int) (net.Conn, net.Addr, error)
 }
 
@@ -29,7 +30,7 @@ type Manager struct {
 	allocations  map[string]*Allocation
 	reservations []*reservation
 
-	allocatePacketConn func(network string, requestedPort int, srcAddr net.Addr, relayAddressType int) (net.PacketConn, net.Addr, error)
+	allocatePacketConn func(network string, requestedPort int, srcAddr net.Addr, relayAddressType util.RelayAddressType) (net.PacketConn, net.Addr, error)
 	allocateConn       func(network string, requestedPort int) (net.Conn, net.Addr, error)
 }
 
@@ -80,7 +81,7 @@ func (m *Manager) Close() error {
 }
 
 // CreateAllocation creates a new allocation and starts relaying
-func (m *Manager) CreateAllocation(fiveTuple *FiveTuple, turnSocket net.PacketConn, requestedPort int, lifetime time.Duration, relayAddressType int) (*Allocation, error) {
+func (m *Manager) CreateAllocation(fiveTuple *FiveTuple, turnSocket net.PacketConn, requestedPort int, lifetime time.Duration, relayAddressType util.RelayAddressType) (*Allocation, error) {
 	switch {
 	case fiveTuple == nil:
 		return nil, errNilFiveTuple
@@ -174,7 +175,7 @@ func (m *Manager) GetReservation(reservationToken string) (int, bool) {
 }
 
 // GetRandomEvenPort returns a random un-allocated udp4 port
-func (m *Manager) GetRandomEvenPort(srcAddr net.Addr, relayAddressType int) (int, error) {
+func (m *Manager) GetRandomEvenPort(srcAddr net.Addr, relayAddressType util.RelayAddressType) (int, error) {
 	for i := 0; i < 128; i++ {
 		conn, addr, err := m.allocatePacketConn("udp4", 0, srcAddr, relayAddressType)
 		if err != nil {

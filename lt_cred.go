@@ -4,6 +4,7 @@ import ( //nolint:gci
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec,gci
 	"encoding/base64"
+	"github.com/pion/turn/v2/internal/util"
 	"net"
 	"strconv"
 	"time"
@@ -35,7 +36,7 @@ func NewLongTermAuthHandler(sharedSecret string, l logging.LeveledLogger) AuthHa
 	if l == nil {
 		l = logging.NewDefaultLoggerFactory().NewLogger("turn")
 	}
-	return func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType int, ok bool) {
+	return func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType util.RelayAddressType, ok bool) {
 		l.Tracef("Authentication username=%q realm=%q srcAddr=%v", username, realm, srcAddr)
 		t, err := strconv.Atoi(username)
 		if err != nil {

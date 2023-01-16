@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/md5" //nolint:gosec,gci
 	"fmt"
+	"github.com/pion/turn/v2/internal/util"
 	"io"
 	"math/rand"
 	"net"
@@ -61,8 +62,8 @@ func buildMsg(transactionID [stun.TransactionIDSize]byte, msgType stun.MessageTy
 	return append([]stun.Setter{&stun.Message{TransactionID: transactionID}, msgType}, additional...)
 }
 
-func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) (stun.MessageIntegrity, int, bool, error) {
-	respondWithNonce := func(responseCode stun.ErrorCode) (stun.MessageIntegrity, int, bool, error) {
+func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) (stun.MessageIntegrity, util.RelayAddressType, bool, error) {
+	respondWithNonce := func(responseCode stun.ErrorCode) (stun.MessageIntegrity, util.RelayAddressType, bool, error) {
 		nonce, err := buildNonce()
 		if err != nil {
 			return nil, -1, false, err
@@ -70,7 +71,7 @@ func authenticateRequest(r Request, m *stun.Message, callingMethod stun.Method) 
 
 		// Nonce has already been taken
 		if _, keyCollision := r.Nonces.LoadOrStore(nonce, time.Now()); keyCollision {
-			return nil, -1, false, errDuplicatedNonce
+			return nil, util.PublicRelay, false, errDuplicatedNonce
 		}
 
 		return nil, -1, false, buildAndSend(r.Conn, r.SrcAddr, buildMsg(m.TransactionID,

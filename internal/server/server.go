@@ -3,6 +3,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/pion/turn/v2/internal/util"
 	"net"
 	"sync"
 	"time"
@@ -30,7 +31,7 @@ type Request struct {
 	Nonces            *sync.Map
 
 	// User Configuration
-	AuthHandler        func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType int, ok bool)
+	AuthHandler        func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType util.RelayAddressType, ok bool)
 	Log                logging.LeveledLogger
 	Realm              string
 	ChannelBindTimeout time.Duration

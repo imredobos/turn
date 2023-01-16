@@ -3,6 +3,7 @@ package turn
 import (
 	"crypto/md5" //nolint:gosec,gci
 	"fmt"
+	"github.com/pion/turn/v2/internal/util"
 	"net"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ type RelayAddressGenerator interface {
 	Validate() error
 
 	// Allocate a PacketConn (UDP) PublicRelayAddress
-	AllocatePacketConn(network string, requestedPort int, srcAddr net.Addr, relayAddressType int) (net.PacketConn, net.Addr, error)
+	AllocatePacketConn(network string, requestedPort int, srcAddr net.Addr, relayAddressType util.RelayAddressType) (net.PacketConn, net.Addr, error)
 
 	// Allocate a Conn (TCP) PublicRelayAddress
 	AllocateConn(network string, requestedPort int) (net.Conn, net.Addr, error)
@@ -65,7 +66,7 @@ func (c *ListenerConfig) validate() error {
 }
 
 // AuthHandler is a callback used to handle incoming auth requests, allowing users to customize Pion TURN with custom behavior
-type AuthHandler func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType int, ok bool)
+type AuthHandler func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType util.RelayAddressType, ok bool)
 
 // GenerateAuthKey is a convenience function to easily generate keys in the format used by AuthHandler
 func GenerateAuthKey(username, realm, password string) []byte {

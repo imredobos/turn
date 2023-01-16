@@ -2,6 +2,7 @@ package turn
 
 import (
 	"fmt"
+	"github.com/pion/turn/v2/internal/util"
 	"net"
 
 	"github.com/pion/randutil"
@@ -14,6 +15,7 @@ type RelayAddressGeneratorPortRange struct {
 	// PublicRelayAddress is the IP returned to the user when the relay is created
 	PublicRelayAddress  net.IP
 	PrivateRelayAddress net.IP
+	RelayAddress        net.IP
 
 	// MinPort the minimum port to allocate
 	MinPort uint16
@@ -61,7 +63,7 @@ func (r *RelayAddressGeneratorPortRange) Validate() error {
 }
 
 // AllocatePacketConn generates a new PacketConn to receive traffic on and the IP/Port to populate the allocation response with
-func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requestedPort int, srcAddr net.Addr, relayAddressType int) (net.PacketConn, net.Addr, error) {
+func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requestedPort int, srcAddr net.Addr, relayAddressType util.RelayAddressType) (net.PacketConn, net.Addr, error) {
 	fmt.Println("key2", srcAddr)
 	if requestedPort != 0 {
 		fmt.Println("hello1 - %s, %s", network, requestedPort)
@@ -95,15 +97,22 @@ func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(network string, requ
 			return nil, nil, errNilConn
 		}
 
-		if relayAddressType == 0 {
-			relayAddr.IP = r.PublicRelayAddress
-		} else {
-			relayAddr.IP = r.PrivateRelayAddress
-		}
+		relayAddr.IP = r.getRelayAddress(relayAddressType)
 		return conn, relayAddr, nil
 	}
 
 	return nil, nil, errMaxRetriesExceeded
+}
+
+func (r *RelayAddressGeneratorPortRange) getRelayAddress(relayAddressType util.RelayAddressType) net.IP {
+	if r.RelayAddress != nil {
+		return r.RelayAddress
+	} else if relayAddressType == util.PrivateRelay {
+		return r.PrivateRelayAddress
+	} else if relayAddressType == util.PublicRelay {
+		return r.PublicRelayAddress
+	}
+	panic("could not calculate relay address")
 }
 
 // AllocateConn generates a new Conn to receive traffic on and the IP/Port to populate the allocation response with
