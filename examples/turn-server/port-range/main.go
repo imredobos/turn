@@ -3,10 +3,7 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
+	"github.com/pion/turn/v2"
 	allocation2 "github.com/pion/turn/v2/internal/util"
 	"log"
 	"net"
@@ -15,9 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
-
-	"github.com/pion/turn/v2"
 )
 
 func main() {
@@ -69,28 +63,28 @@ func main() {
 func turnAuthHandler(authKey string) turn.AuthHandler {
 	return func(username string, realm string, srcAddr net.Addr) (key []byte, relayAddressType allocation2.RelayAddressType, ok bool) {
 		values := strings.Split(username, ":")
-		timestamp := values[0]
-		t, err := strconv.Atoi(timestamp)
-		if err != nil {
-			log.Println("Invalid time-windowed username %q", username)
-			return nil, allocation2.PublicRelay, false
-		}
-		if int64(t) < time.Now().Unix() {
-			log.Println("Expired time-windowed username %q", username)
-			return nil, allocation2.PublicRelay, false
-		}
-
-		mac := hmac.New(sha256.New, []byte(authKey))
-		mac.Write([]byte(username))
-		sum := mac.Sum(nil)
-		password := base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(sum)))
+		//timestamp := values[0]
+		//t, err := strconv.Atoi(timestamp)
+		//if err != nil {
+		//	log.Println("Invalid time-windowed username %q", username)
+		//	return nil, allocation2.PublicRelay, false
+		//}
+		//if int64(t) < time.Now().Unix() {
+		//	log.Println("Expired time-windowed username %q", username)
+		//	return nil, allocation2.PublicRelay, false
+		//}
+		//
+		//mac := hmac.New(sha256.New, []byte(authKey))
+		//mac.Write([]byte(username))
+		//sum := mac.Sum(nil)
+		//password := base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(sum)))
 		rat := allocation2.PublicRelay
 		if len(values) > 2 {
 			addressType, _ := strconv.Atoi(values[2])
 			rat = getRelayAddressType(addressType)
 		}
 
-		return turn.GenerateAuthKey(username, realm, password), rat, true
+		return turn.GenerateAuthKey(username, realm, "password"), rat, true
 	}
 }
 
